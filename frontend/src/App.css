@@ -1,0 +1,48 @@
+/* app.css */
+
+/* Apply a smooth transition to interactive elements */
+button,
+input[type="file"] {
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+/* Add hover effect for the upload button */
+button:hover {
+  background-color: #2563eb; /* A slightly darker blue */
+  transform: scale(1.03);
+}
+
+/* Style the file input for better alignment */
+input[type="file"] {
+  display: block;
+  font-size: 1rem;
+  padding: 0.5rem 0;
+}
+
+/* Add spacing and box-shadow for cards */
+.catalog-card {
+  background-color: white;
+  border-radius: 1rem;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.3s ease;
+}
+
+.catalog-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* Optional: Add a subtle background color */
+body {
+  background-color: #f9fafb; /* Tailwind's gray-50 */
+  font-family: 'Inter', sans-serif;
+}
+
+/* Responsive image styling */
+.catalog-card img {
+  border-radius: 0.5rem;
+  object-fit: cover;
+  height: 12rem; /* 48px × 4 = 192px */
+  width: 100%;
+}
