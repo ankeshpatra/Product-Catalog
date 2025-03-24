@@ -1,1 +1,1 @@
-# Product-Catalog
+# Product-Catalog-Generator
