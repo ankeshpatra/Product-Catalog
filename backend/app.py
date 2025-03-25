@@ -1,14 +1,26 @@
-from flask import Flask, request, jsonify
+import os
+import requests
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import mysql.connector
-import os
-from transformers import BlipProcessor, BlipForConditionalGeneration
+from werkzeug.utils import secure_filename
 from PIL import Image
+from transformers import BlipProcessor, BlipForConditionalGeneration
+import easyocr
+import json
 
 app = Flask(__name__)
 CORS(app)
 
-# MySQL setup
+UPLOAD_FOLDER = 'static'
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+# Google API keys
+GOOGLE_API_KEY = "YOUR_GOOGLE_API_KEY"
+GOOGLE_CX = "YOUR_SEARCH_ENGINE_ID"
+
+# Database
 db = mysql.connector.connect(
     host="localhost",
     user="root",
@@ -16,7 +28,6 @@ db = mysql.connector.connect(
     database="catalog"
 )
 cursor = db.cursor()
-
 cursor.execute('''
 CREATE TABLE IF NOT EXISTS catalog (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -26,43 +37,64 @@ CREATE TABLE IF NOT EXISTS catalog (
     specifications TEXT
 )
 ''')
+db.commit()
 
-# Load BLIP-2 model (image-to-text)
+# BLIP + OCR
 processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-base")
 model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-base")
+reader = easyocr.Reader(['en'])
 
 def generate_image_description(image_path):
-    # Load the image and process it
-    raw_image = Image.open(image_path).convert("RGB")
-    
-    # Prepare inputs for the model
-    inputs = processor(raw_image, return_tensors="pt")
-
-    # Generate text description from the image
+    image = Image.open(image_path).convert("RGB")
+    inputs = processor(image, return_tensors="pt")
     output = model.generate(**inputs)
-    description = processor.decode(output[0], skip_special_tokens=True)
-    
-    return description
+    return processor.decode(output[0], skip_special_tokens=True)
+
+def extract_text_from_image(image_path):
+    result = reader.readtext(image_path, detail=0)
+    return " ".join(result)
+
+def google_search(query):
+    url = "https://www.googleapis.com/customsearch/v1"
+    params = {
+        "key": GOOGLE_API_KEY,
+        "cx": GOOGLE_CX,
+        "q": query
+    }
+    response = requests.get(url, params=params)
+    if response.status_code == 200:
+        results = response.json()
+        snippets = [item.get("snippet", "") for item in results.get("items", [])]
+        return " | ".join(snippets[:3])
+    return "No data found."
 
 def generate_catalog_data(image_path):
-    # Step 1: Get the description from the image using BLIP-2
     description = generate_image_description(image_path)
-    print(f"Generated Image Description: {description}")
-    
-    # Step 2: Use the description to generate catalog-like information
-    # Here, we are assuming a simple mock for the generated product information
-    # You can later use a GPT model to improve the text generation.
-    catalog_data = {
-        "name": f"Product Based on {description[:30]}...",
-        "description": description,
-        "specifications": {
-            "Material": "Synthetic",
-            "Color": "Varied",
-            "Dimensions": "Standard size"
-        }
+    extracted_text = extract_text_from_image(image_path)
+    google_data = google_search(description)
+
+    specs = {
+        "Brand": "",
+        "Model Name": "",
+        "Price": "",
+        "Color": "Varied",
+        "Material": "Synthetic",
+        "Details": google_data
     }
-    
-    return catalog_data
+
+    for word in extracted_text.split():
+        if word.lower().startswith("model"):
+            specs["Model Name"] = word
+        elif "$" in word or word.replace(",", "").replace(".", "").isdigit():
+            specs["Price"] = word
+        elif word.isalpha() and len(word) > 3 and not specs["Brand"]:
+            specs["Brand"] = word
+
+    return {
+        "name": f"Product: {description[:30]}...",
+        "description": f"{description} | OCR: {extracted_text}",
+        "specifications": specs
+    }
 
 @app.route('/api/upload', methods=['POST'])
 def upload_images():
@@ -73,27 +105,23 @@ def upload_images():
     results = []
 
     for file in uploaded_files:
-        filename = file.filename
-        file_path = os.path.join('static', filename)
+        filename = secure_filename(file.filename)
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(file_path)
 
         try:
-            # Generate catalog data using the image
             data = generate_catalog_data(file_path)
-
-            # Insert into the MySQL database
             cursor.execute('''
                 INSERT INTO catalog (image_url, name, description, specifications)
                 VALUES (%s, %s, %s, %s)
             ''', (
-                file_path,
+                f"/static/{filename}",
                 data['name'],
                 data['description'],
-                str(data['specifications'])  # Store specifications as a stringified dict
+                json.dumps(data['specifications'])
             ))
             db.commit()
 
-            # Append the result to be returned to the frontend
             results.append({
                 "image_url": f"/static/{filename}",
                 "name": data['name'],
@@ -114,16 +142,23 @@ def get_catalog():
     results = []
 
     for (image_url, name, description, specifications) in catalog:
+        try:
+            specs = json.loads(specifications)
+        except:
+            specs = {}
+
         results.append({
             "image_url": image_url,
             "name": name,
             "description": description,
-            "specifications": eval(specifications)
+            "specifications": specs
         })
 
     return jsonify(results)
 
+@app.route('/static/<path:filename>')
+def serve_static_file(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
 if __name__ == '__main__':
-    if not os.path.exists('static'):
-        os.makedirs('static')
     app.run(debug=True)

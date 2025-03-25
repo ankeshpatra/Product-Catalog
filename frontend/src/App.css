@@ -1,48 +1,89 @@
-/* app.css */
+/* App.css */
 
-/* Apply a smooth transition to interactive elements */
-button,
-input[type="file"] {
-  transition: background-color 0.3s ease, transform 0.2s ease;
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  font-family: 'Segoe UI', sans-serif;
 }
 
-/* Add hover effect for the upload button */
-button:hover {
-  background-color: #2563eb; /* A slightly darker blue */
-  transform: scale(1.03);
+h1 {
+  color: #1e3a8a;
 }
 
-/* Style the file input for better alignment */
 input[type="file"] {
   display: block;
-  font-size: 1rem;
-  padding: 0.5rem 0;
+  margin-bottom: 16px;
+  padding: 12px;
+  border: 2px dashed #60a5fa;
+  background-color: #eff6ff;
+  border-radius: 8px;
+  cursor: pointer;
 }
 
-/* Add spacing and box-shadow for cards */
-.catalog-card {
-  background-color: white;
-  border-radius: 1rem;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+button {
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  font-size: 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+button:hover {
+  background-color: #1e40af;
+}
+
+p {
+  color: #6b7280;
+  font-size: 14px;
+}
+
+div.grid {
+  margin-top: 24px;
+}
+
+div.grid div {
+  background-color: #ffffff;
+  border-radius: 12px;
   overflow: hidden;
-  transition: transform 0.2s ease, box-shadow 0.3s ease;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
-.catalog-card:hover {
+div.grid div:hover {
   transform: translateY(-5px);
-  box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
 }
 
-/* Optional: Add a subtle background color */
-body {
-  background-color: #f9fafb; /* Tailwind's gray-50 */
-  font-family: 'Inter', sans-serif;
-}
-
-/* Responsive image styling */
-.catalog-card img {
-  border-radius: 0.5rem;
-  object-fit: cover;
-  height: 12rem; /* 48px × 4 = 192px */
+img {
   width: 100%;
+  height: 200px;
+  object-fit: cover;
+}
+
+h2 {
+  color: #111827;
+}
+
+ul {
+  padding-left: 20px;
+  color: #4b5563;
+}
+
+li strong {
+  color: #1f2937;
+}
+
+/* Loader animation */
+p.loading {
+  animation: fadeInOut 1.5s infinite;
+  color: #3b82f6;
+}
+
+@keyframes fadeInOut {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
 }
